@@ -114,12 +114,12 @@ const PERSONALITY_LABELS: Record<PersonalityKey, Record<Lang, string>> = {
 
 // Max possible values per stat (sum of max answer values across all questions)
 const STAT_MAX: Record<keyof ComputedStats, number> = {
-  power: 65,       // questions 1+3+4+5+8 max: 10+10+9+9+9 = 47... but multi-question contributions
-  consistency: 21, // questions 2+4+8 max: 9+6+6 = 21
-  explosion: 24,   // questions 1+3+7+8 max: 6+6+6+6 = 24 (adjusted)
+  power: 62,        // Q1=10, Q3=10, Q4=9, Q5=9, Q8=9, Q9=6, Q10=9
+  consistency: 15,  // Q2=9, Q4=6
+  explosion: 24,    // Q1=6, Q3=6, Q7=6 + Q2 side contribution
   oppression: 9,
   interaction: 9,
-  linear: 6,
+  linear: 9,        // Q2=3, Q9=6
 };
 
 // ─── Questions ────────────────────────────────────────────────────────────────
@@ -236,10 +236,10 @@ const questions: Question[] = [
       nl: "🧠 Moeilijkheidsgraad / plafond?",
     },
     answers: [
-      { label: { en: "😊 Straightforward — autopilot", fr: "😊 Simple — peut tourner en autopilote", nl: "😊 Eenvoudig — automatische piloot" }, values: { } },
-      { label: { en: "🎯 Some sequencing decisions", fr: "🎯 Quelques décisions de séquencement", nl: "🎯 Enkele volgordebeslissingen" }, values: { } },
-      { label: { en: "🧩 Deep lines, tight resource management", fr: "🧩 Lignes profondes, gestion serrée des ressources", nl: "🧩 Diepe lijnen, strak resourcebeheer" }, values: { } },
-      { label: { en: "🧠 Expert — extensive decision trees", fr: "🧠 Expert — arbres de décisions complexes", nl: "🧠 Expert — uitgebreide beslisbomen" }, values: { } },
+      { label: { en: "😊 Straightforward — autopilot", fr: "😊 Simple — peut tourner en autopilote", nl: "😊 Eenvoudig — automatische piloot" }, values: { linear: 6 } },
+      { label: { en: "🎯 Some sequencing decisions", fr: "🎯 Quelques décisions de séquencement", nl: "🎯 Enkele volgordebeslissingen" }, values: { power: 2, linear: 4 } },
+      { label: { en: "🧩 Deep lines, tight resource management", fr: "🧩 Lignes profondes, gestion serrée des ressources", nl: "🧩 Diepe lijnen, strak resourcebeheer" }, values: { power: 4, linear: 2 } },
+      { label: { en: "🧠 Expert — extensive decision trees", fr: "🧠 Expert — arbres de décisions complexes", nl: "🧠 Expert — uitgebreide beslisbomen" }, values: { power: 6 } },
     ],
   },
   {
@@ -250,9 +250,9 @@ const questions: Question[] = [
     },
     answers: [
       { label: { en: "🎲 Themed / casual — just for fun", fr: "🎲 Thématique / casual — juste pour s'amuser", nl: "🎲 Thematisch / casual — gewoon voor de lol" }, values: { } },
-      { label: { en: "😊 Balanced casual — win, but not at all costs", fr: "😊 Casual équilibré — gagner, mais pas à tout prix", nl: "😊 Evenwichtig casual — winnen maar niet ten koste van alles" }, values: { } },
-      { label: { en: "⚖️ Optimized pod — competitive casual", fr: "⚖️ Pod optimisé — casual compétitif", nl: "⚖️ Geoptimaliseerde pod — competitief casual" }, values: { } },
-      { label: { en: "🏆 cEDH / full competitive pod", fr: "🏆 cEDH / pod totalement compétitif", nl: "🏆 cEDH / volledig competitieve pod" }, values: { } },
+      { label: { en: "😊 Balanced casual — win, but not at all costs", fr: "😊 Casual équilibré — gagner, mais pas à tout prix", nl: "😊 Evenwichtig casual — winnen maar niet ten koste van alles" }, values: { power: 3 } },
+      { label: { en: "⚖️ Optimized pod — competitive casual", fr: "⚖️ Pod optimisé — casual compétitif", nl: "⚖️ Geoptimaliseerde pod — competitief casual" }, values: { power: 6 } },
+      { label: { en: "🏆 cEDH / full competitive pod", fr: "🏆 cEDH / pod totalement compétitif", nl: "🏆 cEDH / volledig competitieve pod" }, values: { power: 9 } },
     ],
   },
 ];
@@ -271,8 +271,9 @@ function computeResult(selectedAnswers: Answer[]): ComputedResult {
     });
   });
 
-  // Power is the primary bracket determinant; max possible = 46 across power-contributing questions
-  const MAX_POWER = 46;
+  // Power is the primary bracket determinant.
+  // Max power per question: Q1=10, Q3=10, Q4=9, Q5=9, Q8=9, Q9=6, Q10=9 → total = 62
+  const MAX_POWER = 62;
   const pct = t.power / MAX_POWER;
 
   let bracket: BracketKey = "B1";
@@ -281,9 +282,10 @@ function computeResult(selectedAnswers: Answer[]): ComputedResult {
   else if (pct >= 0.40) bracket = "B3";
   else if (pct >= 0.20) bracket = "B2";
 
-  // Modifier driven by consistency + linearity
+  // Modifier driven by consistency + linearity.
+  // Max consistency: Q2=9, Q4=6 → 15. Max linear: Q2=3, Q9=6 → 9. Total max lin = 24.
   const lin = t.consistency + t.linear;
-  const mod = lin >= 14 ? "+" : lin <= 4 ? "-" : "";
+  const mod = lin >= 18 ? "+" : lin <= 6 ? "-" : "";
 
   const personalities: PersonalityKey[] = [];
   if (t.oppression >= 5)                            personalities.push("Oppressif");
